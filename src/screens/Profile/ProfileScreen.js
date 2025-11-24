@@ -21,14 +21,44 @@ export default function ProfileScreen({ navigation }) {
 
   const loadProfile = async () => {
     try {
-      // Get user profile and wallet balance
-      const [profileRes, walletRes] = await Promise.all([
+      // Get user profile, wallet balance, and purchases
+      const [profileRes, walletRes, purchasesRes] = await Promise.all([
         api.get('/api/me').catch(() => ({ data: {} })),
         api.get('/api/wallet/balance').catch(() => ({ data: { balance: 0 } })),
+        api.get('/api/purchases').catch(() => ({ data: [] })),
       ]);
+
+      const purchases = Array.isArray(purchasesRes.data) ? purchasesRes.data : [];
+      const coursesEnrolled = purchases.length;
+
+      // Aggregate watch time and completed lectures from per-course progress
+      let totalWatchSeconds = 0;
+      let completedLectures = 0;
+
+      for (const p of purchases) {
+        const courseId = p.courseId && typeof p.courseId === 'object' ? p.courseId._id : p.courseId;
+        if (!courseId) continue;
+        try {
+          const progressRes = await api.get(`/api/progress/course/${courseId}`);
+          const items = Array.isArray(progressRes.data?.items) ? progressRes.data.items : [];
+          for (const it of items) {
+            const duration = Number(it.duration || 0);
+            const position = Number(it.position || 0);
+            const clamped = duration > 0 ? Math.min(position, duration) : position;
+            if (!Number.isNaN(clamped)) totalWatchSeconds += clamped;
+            if (it.completed) completedLectures += 1;
+          }
+        } catch (err) {
+          console.warn('Failed to load progress for course', courseId, err?.message || err);
+        }
+      }
+
       setProfile({
         ...(profileRes.data || {}),
         walletBalance: walletRes.data?.balance || 0,
+        coursesEnrolled,
+        totalWatchTime: totalWatchSeconds,
+        completedLectures,
       });
     } catch (e) {
       console.error('Failed to load profile:', e);

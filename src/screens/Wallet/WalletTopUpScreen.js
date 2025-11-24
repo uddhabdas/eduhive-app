@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TextInput, Pressable, Alert, Linking } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import Screen from '../../components/layout/Screen';
 import TopBar from '../../components/layout/TopBar';
 import AppText from '../../components/atoms/AppText';
@@ -68,13 +67,9 @@ export default function WalletTopUpScreen({ navigation }) {
     }
   };
 
-  const copyUPI = async () => {
-    try {
-      await Clipboard.setStringAsync(UPI_ID);
-      Alert.alert('Copied!', 'UPI ID copied to clipboard');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to copy UPI ID');
-    }
+  const copyUPI = () => {
+    // Fallback without expo-clipboard: just show the UPI ID so user can copy manually
+    Alert.alert('UPI ID', `${UPI_ID}\n\nCopy this UPI ID manually in your UPI app.`);
   };
 
   const openUPI = () => {

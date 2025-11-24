@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TextInput, Pressable, Alert, Linking } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import Screen from '../../components/layout/Screen';
 import TopBar from '../../components/layout/TopBar';
 import AppText from '../../components/atoms/AppText';
@@ -69,7 +70,6 @@ export default function WalletTopUpScreen({ navigation }) {
 
   const copyUPI = async () => {
     try {
-      const Clipboard = require('expo-clipboard');
       await Clipboard.setStringAsync(UPI_ID);
       Alert.alert('Copied!', 'UPI ID copied to clipboard');
     } catch (e) {

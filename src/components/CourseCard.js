@@ -25,7 +25,8 @@ function slugifyTitle(t) {
 
 export default function CourseCard({ course, onPress, wide = false }) {
   const [imgIndex, setImgIndex] = useState(0);
-  const { add } = useCart();
+  const { add, items } = useCart();
+  const inCart = Array.isArray(items) && items.some((c) => c._id === course._id);
   const price = derivePrice(course);
   const base = api?.defaults?.baseURL || '';
   const slug = slugifyTitle(course.title);
@@ -100,13 +101,14 @@ export default function CourseCard({ course, onPress, wide = false }) {
         </View>
         {/* cart quick add */}
         <Pressable 
-          onPress={() => add({ ...course, price })} 
-          accessibilityLabel="Add to cart" 
+          onPress={inCart ? undefined : () => add({ ...course, price })} 
+          disabled={inCart}
+          accessibilityLabel={inCart ? 'Already in cart' : 'Add to cart'} 
           style={{ 
             position:'absolute', 
             right:10, 
             top:10, 
-            backgroundColor:'rgba(255,255,255,0.9)', 
+            backgroundColor: inCart ? '#10B981' : 'rgba(255,255,255,0.9)', 
             borderRadius:18, 
             width:36, 
             height:36, 
@@ -114,7 +116,11 @@ export default function CourseCard({ course, onPress, wide = false }) {
             justifyContent:'center',
           }}
         >
-          <MaterialCommunityIcons name="cart-plus" size={20} color="#10B981" />
+          <MaterialCommunityIcons 
+            name={inCart ? 'cart-check' : 'cart-plus'} 
+            size={20} 
+            color={inCart ? '#FFFFFF' : '#10B981'} 
+          />
         </Pressable>
       </View>
       <View className="p-3">

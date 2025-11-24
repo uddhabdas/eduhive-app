@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EduHive",
-    "slug": "eduhive-app",
+    "slug": "eduhive",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,8 +28,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "035c624c-1a38-447a-953e-bb99ef5154f6"
+        "projectId": "bb438d09-7ddb-4f43-8e6c-70991aab7f5b"
       }
-    }
+    },
+    "owner": "uddhabdas"
   }
 }

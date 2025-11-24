@@ -108,7 +108,7 @@ function LectureListItem({ item, index, onPress, progress }) {
 export default function CourseDetailScreen({ route, navigation }) {
   const { id, title, thumbnailUrl, description, sourcePlaylistId } = route.params;
   const cleanTitle = (title || '').replace(/^\s*NPTEL\s*:?\s*/i, '');
-  const { add } = useCart();
+  const { add, items } = useCart();
   const { colors, spacing, shadows } = useTheme();
   const [loading, setLoading] = useState(true);
   const [lectures, setLectures] = useState([]);
@@ -512,21 +512,29 @@ export default function CourseDetailScreen({ route, navigation }) {
                       <View style={{ flex: 1 }}>
                         <AppButton title={purchasing ? 'Processing...' : 'Purchase Now'} onPress={handlePurchase} disabled={purchasing || purchased || walletBalance < courseDetails.price} />
                       </View>
-                      <Pressable
-                        onPress={() => add({ _id: id, title: cleanTitle || title, price: courseDetails.price })}
-                        style={{ 
-                          width: 50,
-                          height: 50,
-                          borderRadius: 12,
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          borderWidth: 1,
-                          borderColor: 'rgba(255, 255, 255, 0.2)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <MaterialCommunityIcons name="cart-plus" size={22} color={colors.onPrimary} />
-                      </Pressable>
+                      {/** Add to cart state-aware button */}
+                      {(() => {
+                        const inCart = Array.isArray(items) && items.some((c) => c._id === id);
+                        return (
+                          <Pressable
+                            onPress={inCart ? undefined : () => add({ _id: id, title: cleanTitle || title, price: courseDetails.price })}
+                            disabled={inCart}
+                            style={{ 
+                              width: 50,
+                              height: 50,
+                              borderRadius: 12,
+                              backgroundColor: inCart ? colors.brand : 'rgba(255, 255, 255, 0.1)',
+                              borderWidth: 1,
+                              borderColor: inCart ? colors.brand : 'rgba(255, 255, 255, 0.2)',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            accessibilityLabel={inCart ? 'Already in cart' : 'Add to cart'}
+                          >
+                            <MaterialCommunityIcons name={inCart ? 'cart-check' : 'cart-plus'} size={22} color={inCart ? colors.onBrand : colors.onPrimary} />
+                          </Pressable>
+                        );
+                      })()}
                     </View>
                   </View>
                 )

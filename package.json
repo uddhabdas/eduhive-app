@@ -20,6 +20,7 @@
     "expo-av": "^16.0.7",
     "expo-blur": "~15.0.7",
     "expo-clipboard": "~8.0.7",
+    "expo-dev-client": "~6.0.18",
     "expo-linear-gradient": "~15.0.7",
     "expo-status-bar": "~3.0.8",
     "nativewind": "^4.2.1",

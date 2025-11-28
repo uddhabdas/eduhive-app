@@ -50,7 +50,7 @@ export default function RegisterScreen() {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => {}} onProfile={() => {}} />
+      <TopBar onSearchPress={() => {}} onCartPress={() => {}} onProfilePress={() => {}} />
       <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
         <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
           <Card style={{ padding: spacing.sm, marginBottom: spacing.sm }}>

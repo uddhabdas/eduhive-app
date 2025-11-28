@@ -23,7 +23,7 @@ function slugifyTitle(t) {
     .replace(/^_+|_+$/g, '');
 }
 
-export default function CourseCard({ course, onPress, wide = false }) {
+export default function CourseCard({ course, onPress, wide = false, width }) {
   const [imgIndex, setImgIndex] = useState(0);
   const { add, items } = useCart();
   const inCart = Array.isArray(items) && items.some((c) => c._id === course._id);
@@ -54,10 +54,10 @@ export default function CourseCard({ course, onPress, wide = false }) {
       accessibilityLabel={`Open course ${course.title}`}
       className={clsx(
         'bg-white dark:bg-neutral-900 rounded-xl overflow-hidden',
-        wide ? 'mr-3' : 'flex-1 mb-3'
+        wide ? 'mr-3' : 'mb-3'
       )}
       style={{
-        width: wide ? 280 : undefined,
+        width: width ?? (wide ? 280 : undefined),
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,

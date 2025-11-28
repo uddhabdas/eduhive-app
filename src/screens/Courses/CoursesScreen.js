@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, FlatList, RefreshControl, ScrollView, useColorScheme, Pressable } from 'react-native';
+import { View, FlatList, RefreshControl, ScrollView, useColorScheme, Pressable, Dimensions } from 'react-native';
 import { api } from '../../services/client';
 import CourseCard from '../../components/CourseCard';
 import { SkeletonCourseCard } from '../../components/Skeleton';
@@ -79,26 +79,46 @@ export default function CoursesScreen({ navigation }) {
   const renderGridItem = ({ item }) => (
     <CourseCard
       course={item}
-      onPress={() => navigation.navigate('CourseDetail', {
-        id: item._id,
-        title: item.title,
-        thumbnailUrl: item.thumbnailUrl,
-        description: item.description,
-        sourcePlaylistId: item.sourcePlaylistId,
-        price: item.price,
-        isPaid: item.isPaid,
-      })}
+      width={gridItemWidth}
+      onPress={async () => {
+        try {
+          const res = await api.get(`/api/courses/${item._id}/purchased`).catch(() => ({ data: { purchased: false } }));
+          const purchased = !!res.data?.purchased;
+          navigation.navigate('CourseDetail', {
+            id: item._id,
+            title: item.title,
+            thumbnailUrl: item.thumbnailUrl,
+            description: item.description,
+            sourcePlaylistId: item.sourcePlaylistId,
+            price: item.price,
+            isPaid: item.isPaid,
+            mode: purchased ? 'learn' : 'preview',
+          });
+        } catch {
+          navigation.navigate('CourseDetail', {
+            id: item._id,
+            title: item.title,
+            thumbnailUrl: item.thumbnailUrl,
+            description: item.description,
+            sourcePlaylistId: item.sourcePlaylistId,
+            price: item.price,
+            isPaid: item.isPaid,
+            mode: 'preview',
+          });
+        }
+      }}
     />
   );
 
   const { spacing, colors } = useTheme();
+  const screenWidth = Dimensions.get('window').width;
+  const gridItemWidth = Math.floor((screenWidth - spacing.lg * 2 - spacing.md) / 2);
   if (loading) {
     return (
       <Screen>
         <TopBar
-          onSearch={() => {}}
+          variant="featured"
           onCart={() => navigation.navigate('Cart')}
-          onProfile={() => navigation.navigate('Profile')}
         />
         <View style={{ paddingTop: spacing.md }}>
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
@@ -116,7 +136,7 @@ export default function CoursesScreen({ navigation }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => { setShowSearch((s) => !s); setTimeout(() => searchRef.current?.focus(), 0); }} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
+      <TopBar variant="featured" onCart={() => navigation.navigate('Cart')} />
       <ErrorBanner message={error} />
       
       <ScrollView
@@ -152,7 +172,7 @@ export default function CoursesScreen({ navigation }) {
             {recommendedToShow.length > 0 && (
               <View style={{ marginBottom: spacing.lg }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
-                  <AppText variant="lg" weight="bold">Recommended</AppText>
+                  <AppText variant="lg" weight="bold">Popular Courses</AppText>
                   <MaterialCommunityIcons name="star" size={18} color={colors.warning} />
                 </View>
                 <FlatList
@@ -165,15 +185,33 @@ export default function CoursesScreen({ navigation }) {
                     <CourseCard
                       wide
                       course={item}
-                      onPress={() => navigation.navigate('CourseDetail', {
-                        id: item._id,
-                        title: item.title,
-                        thumbnailUrl: item.thumbnailUrl,
-                        description: item.description,
-                        sourcePlaylistId: item.sourcePlaylistId,
-                        price: item.price,
-                        isPaid: item.isPaid,
-                      })}
+                      onPress={async () => {
+                        try {
+                          const res = await api.get(`/api/courses/${item._id}/purchased`).catch(() => ({ data: { purchased: false } }));
+                          const purchased = !!res.data?.purchased;
+                          navigation.navigate('CourseDetail', {
+                            id: item._id,
+                            title: item.title,
+                            thumbnailUrl: item.thumbnailUrl,
+                            description: item.description,
+                            sourcePlaylistId: item.sourcePlaylistId,
+                            price: item.price,
+                            isPaid: item.isPaid,
+                            mode: purchased ? 'learn' : 'preview',
+                          });
+                        } catch {
+                          navigation.navigate('CourseDetail', {
+                            id: item._id,
+                            title: item.title,
+                            thumbnailUrl: item.thumbnailUrl,
+                            description: item.description,
+                            sourcePlaylistId: item.sourcePlaylistId,
+                            price: item.price,
+                            isPaid: item.isPaid,
+                            mode: 'preview',
+                          });
+                        }
+                      }}
                     />
                   )}
                 />

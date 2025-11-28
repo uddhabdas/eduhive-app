@@ -48,7 +48,7 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => {}} onProfile={() => {}} />
+      <TopBar onSearchPress={() => {}} onCartPress={() => {}} onProfilePress={() => {}} />
       <View style={{ alignItems: 'center', marginBottom: spacing.xl }}>
         <Card style={{ padding: spacing.sm, marginBottom: spacing.sm }}>
           <Image source={require('../../../assets/images/logo.jpg')} style={{ width: 56, height: 56, borderRadius: 10 }} />

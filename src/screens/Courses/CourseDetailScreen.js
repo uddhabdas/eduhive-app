@@ -6,6 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from '../../services/client';
 import LocalVideoPlayer from '../../components/LocalVideoPlayer';
+import TopBar from '../../components/layout/TopBar';
 import AppButton from '../../components/atoms/AppButton';
 import AppText from '../../components/atoms/AppText';
 import Card from '../../components/atoms/Card';
@@ -16,8 +17,7 @@ import { formatDuration, useDebounce } from '../../utils/helpers';
 import { getCourseMeta } from '../../data/courseMeta';
 import { useCart } from '../../store/CartContext';
 
-function ProgressRing({ percent, size = 60 }) {
-  const { colors, shadows } = useTheme();
+function ProgressRing({ percent, size = 60, colors }) {
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -58,16 +58,10 @@ function ProgressRing({ percent, size = 60 }) {
     </View>
   );
 }
-
-function LectureListItem({ item, index, onPress, progress }) {
-  const { colors } = useTheme();
-  const isCompleted = progress && progress.completed;
-  const hasProgress = progress && progress.position > 0;
-
-  const openExternal = () => {
-    const { Linking } = require('react-native');
-    if (item.videoUrl) Linking.openURL(item.videoUrl);
-  };
+function LectureListItem({ item, index, onPress, progress, colors }) {
+  const isCompleted = !!(progress && progress.completed);
+  const hasProgress = !!(progress && progress.position > 0 && progress.duration > 0);
+  const percent = hasProgress ? Math.min(1, Math.max(0, (progress.position / progress.duration))) : 0;
 
   return (
     <Pressable
@@ -75,40 +69,39 @@ function LectureListItem({ item, index, onPress, progress }) {
       className={`flex-row items-center p-4 border-b border-neutral-200 dark:border-neutral-800`}
     >
       <Text className="w-6 text-xs text-neutral-500 dark:text-neutral-400">{index + 1}.</Text>
-      <Image 
-         source={
-          item.thumbnailUrl
-           ? { uri: item.thumbnailUrl }
-                 : require('../../../assets/images/logo.jpg')}
-        className="w-16 h-9 mx-3 rounded-md"
-        resizeMode="cover"
-         onError={() => {}}
-      />
-
       <View className="flex-1">
         <View className="flex-row items-center justify-between">
           <Text className="flex-1 text-base font-semibold text-neutral-900 dark:text-white" numberOfLines={2}>
             {item.title}
           </Text>
-          {item.videoUrl ? (
-          <Pressable onPress={openExternal} accessibilityLabel="Open externally">
-            <MaterialCommunityIcons name="open-in-new" size={18} color={colors.info} />
-          </Pressable>
-          ) : null}
+          <View className="flex-row items-center ml-3">
+            {item.duration ? (
+              <Text className="text-xs text-neutral-500 dark:text-neutral-400 mr-2">
+                {formatDuration(Number(item.duration) || 0)}
+              </Text>
+            ) : null}
+            {isCompleted ? (
+              <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+            ) : null}
+          </View>
         </View>
-        <View className="mt-1 h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-          <View style={{ width: `${Math.min(100, (hasProgress && progress.duration>0) ? (progress.position/progress.duration*100) : 0)}%` }}
-                className={`h-full ${isCompleted ? 'bg-green-500' : 'bg-brand'}`} />
-        </View>
+        {item.type ? (
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{item.type}</Text>
+        ) : null}
+        {hasProgress ? (
+          <View style={{ marginTop: 6, height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: 'hidden' }}>
+            <View style={{ width: `${percent * 100}%`, height: '100%', backgroundColor: colors.brand }} />
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
 }
 
 export default function CourseDetailScreen({ route, navigation }) {
-  const { id, title, thumbnailUrl, description, sourcePlaylistId } = route.params;
-  const cleanTitle = (title || '').replace(/^\s*NPTEL\s*:?\s*/i, '');
-  const { add, items } = useCart();
+  const { id, title, thumbnailUrl, description, sourcePlaylistId, mode: routeMode } = route.params;
+  const cleanTitle = title || '';
+  const { add } = useCart();
   const { colors, spacing, shadows } = useTheme();
   const [loading, setLoading] = useState(true);
   const [lectures, setLectures] = useState([]);
@@ -439,9 +432,13 @@ export default function CourseDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     loadCourseDetails();
-    loadLectures();
+    if (routeMode === 'learn') {
+      loadLectures();
+    } else {
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, routeMode]);
 
   const getProgressForLecture = useCallback((lectureId) => {
     const target = typeof lectureId === 'string' ? lectureId : (lectureId && lectureId.toString());
@@ -466,242 +463,121 @@ export default function CourseDetailScreen({ route, navigation }) {
   ];
   const audience = meta?.audience || 'Beginners and intermediates looking for a fast, curated path.';
 
-  return (
-    <View className="flex-1 bg-bg-light dark:bg-bg-dark">
-      <ErrorBanner message={error} />
-
-      <ScrollView>
-        {/* Gradient Hero with overlay */}
-        <View className="relative">
-          {thumbnailUrl ? (
-            <Image source={{ uri: thumbnailUrl }} className="w-full h-56" resizeMode="cover" />
-          ) : (
-            <View className="w-full h-56 bg-neutral-300 dark:bg-neutral-800" />
-          )}
-          <LinearGradient
-            colors={["rgba(20,184,166,0.5)", "rgba(16,185,129,0.65)", "rgba(0,0,0,0.55)"]}
-            className="absolute inset-0"
-          />
-          <View className="absolute bottom-0 left-0 right-0 p-4">
-            <Text className="text-2xl font-extrabold text-white mb-1">{cleanTitle || title}</Text>
-            {description ? (
-              <Text className="text-sm text-white/90" numberOfLines={2}>
-                {description}
-              </Text>
-            ) : null}
-            {/* Source label removed for a platform-agnostic experience */}
-            <View className="mt-3">
-              {courseDetails && courseDetails.isPaid && courseDetails.price > 0 ? (
-                purchased ? (
-                  <View className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl px-4 py-2 self-start">
-                    <Text className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Purchased</Text>
-                  </View>
-                ) : (
-                  <View className="w-full">
-                    <View className="flex-row items-center justify-between mb-3">
-                      <View className="flex-row items-baseline">
-                        <Text className="text-white text-3xl font-bold mr-2">₹{courseDetails.price.toFixed(2)}</Text>
-                        {walletBalance < courseDetails.price && (
-                          <View className="bg-yellow-500/20 border border-yellow-500/30 px-2 py-1 rounded-lg">
-                            <Text className="text-yellow-300 text-xs font-medium">Low Balance</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    <View className="flex-row gap-3 items-center">
-                      <View style={{ flex: 1 }}>
-                        <AppButton title={purchasing ? 'Processing...' : 'Purchase Now'} onPress={handlePurchase} disabled={purchasing || purchased || walletBalance < courseDetails.price} />
-                      </View>
-                      {/** Add to cart state-aware button */}
-                      {(() => {
-                        const inCart = Array.isArray(items) && items.some((c) => c._id === id);
-                        return (
-                          <Pressable
-                            onPress={inCart ? undefined : () => add({ _id: id, title: cleanTitle || title, price: courseDetails.price })}
-                            disabled={inCart}
-                            style={{ 
-                              width: 50,
-                              height: 50,
-                              borderRadius: 12,
-                              backgroundColor: inCart ? colors.brand : 'rgba(255, 255, 255, 0.1)',
-                              borderWidth: 1,
-                              borderColor: inCart ? colors.brand : 'rgba(255, 255, 255, 0.2)',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                            accessibilityLabel={inCart ? 'Already in cart' : 'Add to cart'}
-                          >
-                            <MaterialCommunityIcons name={inCart ? 'cart-check' : 'cart-plus'} size={22} color={inCart ? colors.onBrand : colors.onPrimary} />
-                          </Pressable>
-                        );
-                      })()}
-                    </View>
-                  </View>
-                )
+  if (routeMode === 'preview') {
+    const price = Number(courseDetails?.price || 0);
+    return (
+      <View className="flex-1 bg-bg-light dark:bg-bg-dark">
+        <TopBar variant="inner" title={cleanTitle || 'Course'} onBack={() => navigation.goBack()} onCart={() => navigation.navigate('Cart')} />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+          <View className="px-4 pt-4 pb-2">
+            <View className="rounded-2xl overflow-hidden" style={{ aspectRatio: 16/9, ...shadows.md }}>
+              {thumbnailUrl ? (
+                <Image source={{ uri: thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               ) : (
-                <AppButton title={purchasing ? 'Enrolling...' : 'Enroll Now'} onPress={handlePurchase} disabled={purchasing} />
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.border }}>
+                  <MaterialCommunityIcons name="book-open-variant" size={40} color={colors.textSecondary} />
+                </View>
               )}
-              <View className="mt-3" />
+              <LinearGradient colors={["transparent","rgba(0,0,0,0.35)"]} style={{ position:'absolute', left:0, right:0, bottom:0, height:60 }} />
             </View>
           </View>
-        </View>
-
-        {/* Progress Summary Row */}
-        {progressSummary && lectures.length > 0 && (
-          <View className="px-4 pt-4 pb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <ProgressRing percent={progressSummary.percent} size={50} />
-              <View className="ml-3">
-                <Text className="text-base font-bold text-neutral-900 dark:text-white">
-                  {Math.round(progressSummary.percent * 100)}% Complete
-                </Text>
-                {progressSummary.remainingSeconds > 0 && (
-                  <Text className="text-sm text-neutral-500 dark:text-neutral-400">
-                    {formatDuration(progressSummary.remainingSeconds)} remaining
-                  </Text>
-                )}
+          <View className="px-4">
+            <AppText variant="pageTitle" weight="extrabold">{cleanTitle}</AppText>
+            <AppText variant="body" color="textSecondary" style={{ marginTop: spacing.sm, lineHeight: 20 }}>{aboutText}</AppText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg }}>
+              <View style={{ backgroundColor: price > 0 ? colors.brand : colors.success, borderRadius: 14, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadows.sm }}>
+                <AppText variant="body" weight="bold" style={{ color: colors.onBrand }}>{price > 0 ? `₹${price.toFixed(2)}` : 'Free'}</AppText>
               </View>
+              <View style={{ width: spacing.md }} />
+              <Pressable onPress={() => add({ ...(courseDetails || { _id: id, title, thumbnailUrl }), price })} style={{ backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, ...shadows.sm }}>
+                <AppText variant="body" weight="semibold">Add to Cart</AppText>
+              </Pressable>
+              <View style={{ width: spacing.sm }} />
+              <Pressable onPress={handlePurchase} style={{ backgroundColor: colors.brand, borderRadius: 14, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, ...shadows.md }}>
+                <AppText variant="body" weight="semibold" style={{ color: colors.onBrand }}>Buy Now</AppText>
+              </Pressable>
             </View>
           </View>
-        )}
-
-        <View className="px-4 pb-4">
-          <Card style={{ padding: spacing.lg }}>
-            <AppText variant="sectionTitle" weight="bold">About this course</AppText>
-            <AppText variant="body" color="textSecondary" style={{ marginTop: spacing.sm }}>{aboutText}</AppText>
-            <View style={{ marginTop: spacing.md }}>
-              <AppText variant="body" weight="semibold" style={{ marginBottom: spacing.xs }}>What you'll learn</AppText>
-              <View style={{ gap: spacing.xs }}>
-                {highlights.map((h, i) => (
-                  <AppText key={`hl-${i}`} variant="caption" color="textSecondary">• {h}</AppText>
-                ))}
-              </View>
-            </View>
-            <View style={{ marginTop: spacing.md }}>
-              <AppText variant="body" weight="semibold" style={{ marginBottom: spacing.xs }}>Who is this for</AppText>
-              <AppText variant="caption" color="textSecondary">{audience}</AppText>
-            </View>
-          </Card>
-        </View>
-
-        {/* Roadmap timeline */}
-        <View className="px-4 pb-4">
-          <Card style={{ padding: spacing.lg }}>
-            <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.sm }}>Roadmap</AppText>
-            {(lectures.length ? lectures.slice(0,4) : [1,2,3,4]).map((it, idx) => {
-              const done = progressSummary && progressSummary.percent >= (idx+1)/(Math.min(lectures.length || 4, 4));
-              return (
-                <View key={`rm-${idx}`} className="flex-row items-start mb-3">
-                  <View className="items-center mr-3">
-                    <View className={done ? 'w-3 h-3 rounded-full bg-accent' : 'w-3 h-3 rounded-full bg-neutral-300'} />
-                    {idx < 3 && <View className="w-0.5 flex-1 bg-neutral-200" />}
-                  </View>
-                  <View className="flex-1">
-                    <AppText variant="body" weight="semibold">{lectures[idx]?.title || `Step ${idx+1}`}</AppText>
-                    <AppText variant="caption" color="textSecondary">{lectures[idx]?.description || 'Continue to unlock the next step'}</AppText>
-                  </View>
-                </View>
-              );
-            })}
-          </Card>
-        </View>
-
-        {/* Video Player */}
-        <View className="px-4 pb-4">
-          {courseDetails && courseDetails.isPaid && courseDetails.price > 0 && !purchased ? (
-            <View
-              className="rounded-2xl overflow-hidden bg-neutral-900 items-center justify-center"
-              style={{
-                aspectRatio: 16/9,
-                ...shadows.md,
-              }}
-            >
-              <MaterialCommunityIcons name="lock" size={64} color={colors.textSecondary} />
-              <Text className="text-white text-lg font-bold mt-4">Course Locked</Text>
-              <Text className="text-neutral-400 text-sm mt-2 text-center px-8">
-                Purchase this course to unlock all lectures
-              </Text>
-              <AppButton title={purchasing ? 'Processing...' : `Purchase for ₹${courseDetails.price.toFixed(2)}`} onPress={handlePurchase} disabled={purchasing} />
-            </View>
-          ) : (
-            <View
-              className="rounded-2xl overflow-hidden"
-              style={{
-                aspectRatio: 16/9,
-                ...shadows.md,
-              }}
-            >
-              {selected?.videoUrl ? (
-                <LocalVideoPlayer
-                  uri={selected.videoUrl}
-                  start={(getProgressForLecture(selected._id)?.position) || 0}
-                  onReady={() => {}}
-                  onTick={debouncedHandleTick}
-                  onEnded={handleEnded}
-                />
-              ) : null}
-            </View>
-          )}
-          {!selected?.videoUrl && !selected?.videoId && (
-            <View className="mt-3">
-              <View className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-4">
-                <View className="flex-row items-start">
-                  <MaterialCommunityIcons name="alert-circle" size={20} color={colors.warning} className="mr-2" />
-                  <View className="flex-1">
-                    <Text className="text-yellow-800 dark:text-yellow-300 font-semibold mb-1">
-                      No Video Available
-                    </Text>
-                    <Text className="text-yellow-700 dark:text-yellow-400 text-sm">
-                      This lecture doesn't have a video yet. Please check back later or contact support.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
-        
-
-        {/* Continue Watching Button */}
-        {lectures.length > 0 && (!courseDetails || !courseDetails.isPaid || courseDetails.price <= 0 || purchased) && (
-          <View className="px-4 pb-2">
-            <AppButton title="Continue Learning" onPress={handleContinueWatching} />
-          </View>
-        )}
-
-        {/* Lectures List */}
-        {(!courseDetails || !courseDetails.isPaid || courseDetails.price <= 0 || purchased) && (
-          <View className="px-4 pb-4">
-            <AppText variant="sectionTitle" weight="extrabold" style={{ marginBottom: spacing.sm }}>
-              Lectures ({lectures.length})
-            </AppText>
-            <Card style={{ overflow: 'hidden' }}>
-                {lectures.map((item, idx) => (
-                  <LectureListItem
-                    key={item._id}
-                    item={item}
-                    index={idx}
-                    onPress={() => {
-                      // Block if trying to jump ahead of first incomplete
-                      const firstIncomplete = progressItems.find((p) => !p.completed);
-                      if (firstIncomplete) {
-                        const targetIdx = lectures.findIndex((l) => l._id === item._id);
-                        const firstIdx = lectures.findIndex((l) => l._id === firstIncomplete.lectureId);
-                        if (targetIdx > firstIdx) {
-                          const { Alert } = require('react-native');
-                          Alert.alert('Locked', 'Finish the current stage (watch 90%) to unlock next.');
-                          return;
-                        }
-                      }
-                      setSelected(item);
-                    }}
-                    progress={getProgressForLecture(item._id)}
-                  />
-                ))}
+          <View className="px-4" style={{ marginTop: spacing.md }}>
+            <Card style={{ padding: spacing.md }}>
+              <AppText variant="caption" color="textSecondary">Purchase this course to unlock lectures</AppText>
             </Card>
           </View>
-        )}
+          <View className="px-4" style={{ marginTop: spacing.xl }}>
+            <AppText variant="lg" weight="bold">Highlights</AppText>
+            {highlights.map((h, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm }}>
+                <MaterialCommunityIcons name="check-circle" size={18} color={colors.success} />
+                <AppText variant="body" style={{ marginLeft: spacing.sm }}>{h}</AppText>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-bg-light dark:bg-bg-dark">
+      <TopBar variant="inner" title={cleanTitle || 'Course details'} onBack={() => navigation.goBack()} onCart={() => navigation.navigate('Cart')} />
+      {purchased && routeMode === 'learn' && !!error ? <ErrorBanner message={error} /> : null}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+        <View className="px-4 pt-4 pb-2">
+          <View className="rounded-2xl overflow-hidden" style={{ aspectRatio: 16/9, ...shadows.md }}>
+            {selected?.videoUrl ? (
+              <LocalVideoPlayer
+                uri={selected.videoUrl}
+                start={(getProgressForLecture(selected._id)?.position) || 0}
+                onReady={() => {}}
+                onTick={debouncedHandleTick}
+                onEnded={handleEnded}
+              />
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.border }}>
+                <MaterialCommunityIcons name="play-circle" size={40} color={colors.textSecondary} />
+              </View>
+            )}
+          </View>
+        </View>
+        <View className="px-4 pb-2">
+          <View style={{ flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 12 }}>
+            <Pressable style={{ flex: 1, paddingVertical: spacing.sm, alignItems: 'center' }}>
+              <AppText variant="body" weight="semibold">Lectures</AppText>
+            </Pressable>
+            <Pressable style={{ flex: 1, paddingVertical: spacing.sm, alignItems: 'center' }}>
+              <AppText variant="body" color="textSecondary">More</AppText>
+            </Pressable>
+          </View>
+        </View>
+        <View className="px-4 pb-4">
+          <AppText variant="sectionTitle" weight="extrabold" style={{ marginBottom: spacing.sm }}>
+            Lectures ({lectures.length})
+          </AppText>
+          <Card style={{ overflow: 'hidden' }}>
+            {lectures.map((item, idx) => (
+              <LectureListItem
+                key={item._id}
+                item={item}
+                index={idx}
+                onPress={() => {
+                  const firstIncomplete = progressItems.find((p) => !p.completed);
+                  if (firstIncomplete) {
+                    const targetIdx = lectures.findIndex((l) => l._id === item._id);
+                    const firstIdx = lectures.findIndex((l) => l._id === firstIncomplete.lectureId);
+                    if (targetIdx > firstIdx) {
+                      const { Alert } = require('react-native');
+                      Alert.alert('Locked', 'Finish the current stage (watch 90%) to unlock next.');
+                      return;
+                    }
+                  }
+                  setSelected(item);
+                }}
+                progress={getProgressForLecture(item._id)}
+                colors={colors}
+              />
+            ))}
+          </Card>
+        </View>
       </ScrollView>
     </View>
   );

@@ -11,7 +11,7 @@ export default function AboutCourseScreen({ route, navigation }) {
   const { spacing, colors, radii } = useTheme();
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
+      <TopBar variant="inner" title={cleanTitle || 'Course'} onBack={() => navigation.goBack()} />
       <ScrollView className="flex-1">
         <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
           {thumbnailUrl ? (
@@ -28,23 +28,23 @@ export default function AboutCourseScreen({ route, navigation }) {
           )}
           
           <AppText variant="pageTitle" weight="extrabold" style={{ marginTop: spacing.lg }}>{cleanTitle}</AppText>
-          
+
           {description && (
             <AppText variant="body" color="textSecondary" style={{ marginTop: spacing.md }}>
               {description}
             </AppText>
           )}
-          
+
           {about && (
             <View style={{ marginTop: spacing.lg }}>
-              <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.sm }}>About</AppText>
+              <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.sm }}>About this course</AppText>
               <AppText variant="body" color="textSecondary">{about}</AppText>
             </View>
           )}
-          
+
           {highlights && Array.isArray(highlights) && highlights.length > 0 && (
             <View style={{ marginTop: spacing.lg }}>
-              <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.md }}>Highlights</AppText>
+              <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.md }}>What you’ll learn</AppText>
               {highlights.map((highlight, index) => (
                 <View key={index} className="flex-row items-start" style={{ marginBottom: spacing.sm }}>
                   <AppText variant="body" color="success" style={{ marginRight: spacing.sm }}>•</AppText>
@@ -53,6 +53,16 @@ export default function AboutCourseScreen({ route, navigation }) {
               ))}
             </View>
           )}
+
+          <View style={{ marginTop: spacing.lg }}>
+            <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.sm }}>Roadmap</AppText>
+            <AppText variant="caption" color="textSecondary">Course roadmap and progression details are available in the lectures section.</AppText>
+          </View>
+
+          <View style={{ marginTop: spacing.lg }}>
+            <AppText variant="sectionTitle" weight="bold" style={{ marginBottom: spacing.sm }}>Lectures</AppText>
+            <AppText variant="caption" color="textSecondary">Browse lectures from the course detail screen.</AppText>
+          </View>
         </View>
       </ScrollView>
     </Screen>

@@ -9,7 +9,7 @@ export default function AppText({ children, variant = 'body', weight = 'regular'
   const fontWeight = typography.weights[weight] || typography.weights.regular;
   const colorValue = colors[color] || colors.textPrimary;
   return (
-    <Text style={[{ fontSize, fontWeight, color: colorValue }, style]} numberOfLines={numberOfLines}>
+    <Text style={[{ fontSize, fontWeight, color: colorValue }, style]} numberOfLines={numberOfLines} allowFontScaling={false} maxFontSizeMultiplier={1.2}>
       {children}
     </Text>
   );

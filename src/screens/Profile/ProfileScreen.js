@@ -3,8 +3,8 @@ import { View, Image, ScrollView, Pressable, Alert } from 'react-native';
 import Screen from '../../components/layout/Screen';
 import TopBar from '../../components/layout/TopBar';
 import AppText from '../../components/atoms/AppText';
-import Card from '../../components/atoms/Card';
 import { useTheme } from '../../theme/ThemeProvider';
+import Card from '../../components/atoms/Card';
 import { api } from '../../services/client';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../store/AuthContext';
@@ -13,7 +13,7 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const { logout, user } = useAuth();
-  const { spacing, colors, radii } = useTheme();
+  const { spacing, colors, radii, shadows } = useTheme();
 
   useEffect(() => {
     loadProfile();
@@ -70,66 +70,40 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onProfile={() => {}} />
-      <ScrollView>
-        <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
-          <View className="flex-row items-center justify-between mb-2">
-            <View className="flex-row items-center flex-1">
-              <Image source={avatar} style={{ width: 72, height: 72, borderRadius: 36, marginRight: spacing.md }} />
-              <View className="flex-1">
-                <AppText variant="sectionTitle" weight="bold" numberOfLines={1}>{profile?.name || user?.name || 'User'}</AppText>
-                <AppText variant="caption" color="textSecondary" numberOfLines={1}>{profile?.email || user?.email || ''}</AppText>
-              </View>
-            </View>
-            <Pressable
-              onPress={() => navigation.navigate('EditProfile')}
-              style={{ marginLeft: spacing.sm, padding: spacing.sm, backgroundColor: colors.surface, borderRadius: radii.full || 999, ...{ shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.1, shadowRadius:4, elevation:2 } }}
-            >
-              <MaterialCommunityIcons name="pencil" size={20} color={colors.success} />
-            </Pressable>
-          </View>
-
-          {/* Wallet Balance Card */}
-          <Pressable
-            onPress={() => navigation.navigate('Wallet')}
-            style={{ marginTop: spacing.lg, borderRadius: radii.lg, padding: spacing.lg, backgroundColor: colors.brand }}
-          >
+      <TopBar variant="account" title="Account" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
+        <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl, paddingHorizontal: spacing.lg }}>
+          <Card style={{ padding: spacing.md, ...shadows.md }}>
             <View className="flex-row items-center justify-between">
-              <View>
-                <AppText variant="caption" weight="medium" style={{ color: colors.onBrand, marginBottom: spacing.xs }}>Wallet Balance</AppText>
-                <AppText variant="xl" weight="bold" style={{ color: colors.onBrand }}>₹{profile?.walletBalance?.toFixed(2) || '0.00'}</AppText>
+              <View className="flex-row items-center flex-1">
+                <Image source={avatar} style={{ width: 72, height: 72, borderRadius: 36, marginRight: spacing.md }} />
+                <View className="flex-1">
+                  <AppText variant="sectionTitle" weight="bold" numberOfLines={1}>{profile?.name || user?.name || 'User'}</AppText>
+                  <AppText variant="caption" color="textSecondary" numberOfLines={1}>{profile?.email || user?.email || ''}</AppText>
+                </View>
               </View>
-              <MaterialCommunityIcons name="wallet" size={40} color={colors.onBrand} />
-            </View>
-            <View className="mt-4 flex-row items-center">
-              <AppText variant="caption" style={{ color: colors.onBrand, opacity: 0.9, marginRight: spacing.sm }}>Tap to manage wallet</AppText>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.onBrand} />
-            </View>
-          </Pressable>
-
-          {/* Stats */}
-          <Card style={{ marginTop: spacing.lg }}>
-            <View className="flex-row items-center justify-between">
-              <View className="items-center flex-1">
-                <MaterialCommunityIcons name="book-open-outline" size={22} color={colors.textPrimary} />
-                <AppText variant="body" weight="bold" style={{ marginTop: spacing.xs }}>{profile?.coursesEnrolled ?? 0}</AppText>
-                <AppText variant="caption" color="textSecondary">Courses</AppText>
-              </View>
-              <View className="items-center flex-1">
-                <MaterialCommunityIcons name="clock-outline" size={22} color={colors.textPrimary} />
-                <AppText variant="body" weight="bold" style={{ marginTop: spacing.xs }}>{Math.round((profile?.totalWatchTime ?? 0)/60)}m</AppText>
-                <AppText variant="caption" color="textSecondary">Watch time</AppText>
-              </View>
-              <View className="items-center flex-1">
-                <MaterialCommunityIcons name="check-circle-outline" size={22} color={colors.textPrimary} />
-                <AppText variant="body" weight="bold" style={{ marginTop: spacing.xs }}>{profile?.completedLectures ?? 0}</AppText>
-                <AppText variant="caption" color="textSecondary">Completed</AppText>
-              </View>
+              <Pressable onPress={() => navigation.navigate('EditProfile')} style={{ padding: spacing.sm }}>
+                <MaterialCommunityIcons name="pencil" size={20} color={colors.success} />
+              </Pressable>
             </View>
           </Card>
 
-          {/* Links */}
-          <Card style={{ marginTop: spacing.lg, overflow: 'hidden' }}>
+          <Pressable
+            onPress={() => navigation.navigate('Wallet')}
+            style={{ marginTop: spacing.lg, borderRadius: radii.lg, padding: spacing.lg, backgroundColor: colors.brand, ...shadows.lg }}
+          >
+            <View>
+              <AppText variant="caption" weight="medium" style={{ color: colors.onBrand, marginBottom: spacing.xs }}>Wallet Balance</AppText>
+              <AppText variant="sectionTitle" weight="extrabold" style={{ color: colors.onBrand }}>₹{profile?.walletBalance?.toFixed(2) || '0.00'}</AppText>
+              <View style={{ marginTop: spacing.sm }}>
+                <AppText variant="caption" style={{ color: colors.onBrand }}>Add Money / Manage Wallet</AppText>
+              </View>
+            </View>
+          </Pressable>
+
+          
+
+          <Card style={{ marginTop: spacing.lg, overflow: 'hidden', ...shadows.md }}>
             {[
               { icon:'account', label:'View Profile', onPress: () => navigation.navigate('EditProfile') },
               { icon:'wallet', label:'My Wallet', onPress: () => navigation.navigate('Wallet') },
@@ -137,9 +111,9 @@ export default function ProfileScreen({ navigation }) {
               { icon:'cog-outline', label:'Settings', onPress: () => navigation.navigate('Settings') },
             ].map((item, index) => (
               <Pressable 
-                key={item.label} 
-                onPress={item.onPress} 
-                className={`flex-row items-center p-4 ${index < 3 ? 'border-b border-neutral-100 dark:border-neutral-800' : ''}`}
+                key={item.label}
+                onPress={item.onPress}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderBottomColor: index < 3 ? (colors.border) : 'transparent', borderBottomWidth: index < 3 ? 1 : 0 }}
               >
                 <MaterialCommunityIcons name={item.icon} size={22} color={colors.success} />
                 <AppText variant="body" style={{ marginLeft: spacing.sm, flex: 1 }}>{item.label}</AppText>
@@ -148,7 +122,6 @@ export default function ProfileScreen({ navigation }) {
             ))}
           </Card>
 
-          {/* Logout Button */}
           <Pressable
             onPress={() => {
               Alert.alert(
@@ -160,7 +133,7 @@ export default function ProfileScreen({ navigation }) {
                 ]
               );
             }}
-            style={{ marginTop: spacing.md, backgroundColor: colors.danger + '15', borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+            style={{ marginTop: spacing.lg, borderWidth: 1, borderColor: colors.danger, borderRadius: radii.lg, padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}
           >
             <MaterialCommunityIcons name="logout" size={22} color={colors.danger} />
             <AppText variant="body" weight="semibold" style={{ marginLeft: spacing.sm, color: colors.danger }}>Logout</AppText>

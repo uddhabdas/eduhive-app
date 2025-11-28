@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, ActivityIndicator, Pressable } from 'react-native';
+import { View, ActivityIndicator, Pressable, Text } from 'react-native';
 // Using expo-av for now (will migrate to expo-video in future SDK)
 // Note: expo-av is deprecated but still works in current SDK
 import { Video } from 'expo-av';
@@ -9,6 +9,7 @@ export default function LocalVideoPlayer({ uri, start = 0, onTick, onEnded, onRe
   const videoRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
   const [hasSeekedInitially, setHasSeekedInitially] = useState(false);
+  const [status, setStatus] = useState(null);
 
   // Reset initial seek flag when source changes
   useEffect(() => {
@@ -48,8 +49,7 @@ export default function LocalVideoPlayer({ uri, start = 0, onTick, onEnded, onRe
         style={[{ width: '100%', height: '100%' }, style]}
         resizeMode="contain"
         shouldPlay
-        useNativeControls
-        onLoad={(status) => {
+        onLoad={(s) => {
           setIsReady(true);
           // Seek once to saved progress when the video loads
           if (!hasSeekedInitially && start > 0 && videoRef.current) {
@@ -58,28 +58,87 @@ export default function LocalVideoPlayer({ uri, start = 0, onTick, onEnded, onRe
             } catch {}
             setHasSeekedInitially(true);
           }
-          onReady && onReady(status);
+          setStatus(s);
+          onReady && onReady(s);
         }}
-        onPlaybackStatusUpdate={(status) => {
-          if (status.didJustFinish) {
+        onPlaybackStatusUpdate={(s) => {
+          setStatus(s);
+          if (s.didJustFinish) {
             onEnded && onEnded({
-              duration: status.durationMillis ? status.durationMillis / 1000 : 0,
+              duration: s.durationMillis ? s.durationMillis / 1000 : 0,
             });
           }
         }}
       />
-      {isReady && (
-        <View style={{ position: 'absolute', right: 8, bottom: 8, zIndex: 20 }}>
+
+      {/* Custom controls overlay */}
+      {isReady && status && (
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Pressable
+            onPress={async () => {
+              const pos = status.positionMillis || 0;
+              const next = Math.max(0, pos - 10000);
+              try {
+                await videoRef.current?.setPositionAsync(next);
+              } catch {}
+            }}
+            style={{ padding: 6 }}
+          >
+            <MaterialCommunityIcons name="rewind-10" size={22} color="#FFF" />
+          </Pressable>
+
+          <Pressable
+            onPress={async () => {
+              try {
+                if (status.isPlaying) {
+                  await videoRef.current?.pauseAsync();
+                } else {
+                  await videoRef.current?.playAsync();
+                }
+              } catch {}
+            }}
+            style={{ padding: 6 }}
+          >
+            <MaterialCommunityIcons
+              name={status.isPlaying ? 'pause-circle' : 'play-circle'}
+              size={32}
+              color="#FFF"
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={async () => {
+              const pos = status.positionMillis || 0;
+              const dur = status.durationMillis || 0;
+              const next = Math.min(dur, pos + 10000);
+              try {
+                await videoRef.current?.setPositionAsync(next);
+              } catch {}
+            }}
+            style={{ padding: 6 }}
+          >
+            <MaterialCommunityIcons name="fast-forward-10" size={22} color="#FFF" />
+          </Pressable>
+
           <Pressable
             onPress={() => videoRef.current?.presentFullscreenPlayer?.()}
-            style={{
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              borderRadius: 16,
-              padding: 6,
-            }}
+            style={{ padding: 6 }}
             accessibilityLabel="Enter full screen"
           >
-            <MaterialCommunityIcons name="fullscreen" size={20} color="#FFF" />
+            <MaterialCommunityIcons name="fullscreen" size={22} color="#FFF" />
           </Pressable>
         </View>
       )}

@@ -77,7 +77,7 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
+      <TopBar variant="inner" title="Settings" onBack={() => navigation.goBack()} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
           <AppText variant="pageTitle" weight="extrabold" style={{ marginBottom: spacing.xl }}>Settings</AppText>

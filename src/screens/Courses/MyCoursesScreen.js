@@ -1,68 +1,72 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, FlatList, RefreshControl, ScrollView } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { View, FlatList, RefreshControl, Image, Pressable } from 'react-native';
 import Screen from '../../components/layout/Screen';
 import TopBar from '../../components/layout/TopBar';
 import AppText from '../../components/atoms/AppText';
-import { useTheme } from '../../theme/ThemeProvider';
-import CourseCard from '../../components/CourseCard';
-import { api } from '../../services/client';
-import { SkeletonCourseCard } from '../../components/Skeleton';
+import AppButton from '../../components/atoms/AppButton';
 import Card from '../../components/atoms/Card';
 import EmptyState from '../../components/EmptyState';
+import ErrorBanner from '../../components/ErrorBanner';
+import { useTheme } from '../../theme/ThemeProvider';
+import { api } from '../../services/client';
 
 export default function MyCoursesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [courses, setCourses] = useState([]);
   const [error, setError] = useState(null);
+  const { spacing, colors, radii } = useTheme();
+  const handleBack = navigation.canGoBack() ? () => navigation.goBack() : undefined;
 
   const loadCourses = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const purchasesRes = await api.get('/api/purchases');
-      console.log('Purchases response:', purchasesRes.data);
-      
-      // The courseId is already populated by the server
-      const purchasedCourses = purchasesRes.data
+      const purchased = Array.isArray(purchasesRes.data) ? purchasesRes.data : [];
+
+      const purchasedCourses = purchased
         .map((p) => {
-          // If courseId is populated (object), use it directly
-          if (p.courseId && typeof p.courseId === 'object') {
-            return p.courseId;
-          }
-          // If courseId is just an ID string, we need to fetch it
+          if (p.courseId && typeof p.courseId === 'object') return p.courseId;
           return p.courseId;
         })
         .filter(Boolean);
-      
+
       if (purchasedCourses.length === 0) {
         setCourses([]);
-        setLoading(false);
-        setRefreshing(false);
         return;
       }
 
-      // Fetch course details for courses that are just IDs
       const courseDetails = await Promise.all(
         purchasedCourses.map(async (course) => {
-          // If it's already a full course object, return it
-          if (course && typeof course === 'object' && course.title) {
-            return course;
-          }
-          // Otherwise, fetch it
+          if (course && typeof course === 'object' && course.title) return course;
           try {
             const courseId = course._id || course;
             const res = await api.get(`/api/courses/${courseId}`);
             return res.data;
           } catch (e) {
-            console.warn('Failed to fetch course:', course, e);
+            console.warn('Failed to fetch course:', course, e?.message || e);
             return null;
           }
         })
       );
 
       const validCourses = courseDetails.filter(Boolean);
-      console.log('Loaded courses:', validCourses.length);
-      setCourses(validCourses);
+
+      // Fetch per-course progress summaries
+      const withProgress = await Promise.all(
+        validCourses.map(async (course) => {
+          try {
+            const res = await api.get(`/api/progress/course/${course._id}`);
+            return { ...course, _progress: res.data?.summary || null };
+          } catch (e) {
+            console.warn('Failed to load progress for course', course._id, e?.message || e);
+            return { ...course, _progress: null };
+          }
+        })
+      );
+
+      setCourses(withProgress);
     } catch (e) {
       console.error('Failed to load purchased courses:', e);
       console.error('Error details:', e.response?.data);
@@ -82,20 +86,69 @@ export default function MyCoursesScreen({ navigation }) {
     loadCourses();
   };
 
-  const { spacing, colors } = useTheme();
+  const totalCount = courses.length;
+
+  const renderCourseItem = ({ item }) => {
+    const summary = item._progress || {};
+    const percent = Math.max(0, Math.min(1, summary.percent ?? 0));
+    const percentText = `${Math.round(percent * 100)}%`;
+    const instructor = item.instructor || item.author || 'Instructor';
+
+    return (
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm }}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate('CourseDetail', {
+              id: item._id,
+              title: item.title,
+              thumbnailUrl: item.thumbnailUrl,
+              description: item.description,
+              sourcePlaylistId: item.sourcePlaylistId,
+              price: item.price,
+              isPaid: item.isPaid,
+              mode: 'learn',
+            })
+          }
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 90, height: 60, borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.border, marginRight: spacing.md }}>
+              {item.thumbnailUrl ? (
+                <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : null}
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText variant="body" weight="semibold" numberOfLines={2}>{item.title}</AppText>
+              <AppText variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>{instructor}</AppText>
+              <View style={{ marginTop: spacing.xs, height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: 'hidden' }}>
+                <View style={{ width: `${percent * 100}%`, height: '100%', backgroundColor: colors.brand }} />
+              </View>
+              <AppText variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>{percent > 0 ? `${percentText} complete` : 'Not started'}</AppText>
+            </View>
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <Screen>
-        <TopBar onSearch={() => {}} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
-        <View style={{ paddingTop: spacing.lg }}>
-          <View className="flex-row gap-3">
-            <SkeletonCourseCard wide />
-            <SkeletonCourseCard wide />
-          </View>
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
-            <SkeletonCourseCard />
-            <SkeletonCourseCard />
-          </View>
+        <TopBar variant="learning" title="My Learning" onBack={handleBack} />
+        <View style={{ paddingTop: spacing.lg, paddingHorizontal: spacing.lg }}>
+          <AppText variant="pageTitle" weight="extrabold" style={{ marginBottom: spacing.md }}>
+            My Learning
+          </AppText>
+          {/* Simple loading skeletons */}
+          {[0, 1, 2].map((i) => (
+            <Card
+              key={i}
+              style={{
+                height: 80,
+                marginBottom: spacing.md,
+                backgroundColor: colors.border,
+              }}
+            />
+          ))}
         </View>
       </Screen>
     );
@@ -103,57 +156,30 @@ export default function MyCoursesScreen({ navigation }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
-      {error ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Card style={{ backgroundColor: colors.danger + '15' }}>
-            <AppText variant="caption" color="danger">{error}</AppText>
-          </Card>
-        </View>
-      ) : null}
-      
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
-            <AppText variant="pageTitle" weight="extrabold">My Courses</AppText>
-            <AppText variant="caption" color="textSecondary">{courses.length} {courses.length === 1 ? 'course' : 'courses'}</AppText>
-          </View>
-
-          {courses.length === 0 ? (
-            <EmptyState
-              title="No courses yet"
-              subtitle="Purchase courses to start learning"
-              primaryText="Browse Courses"
-              onPrimary={() => navigation.navigate('Courses')}
-            />
-          ) : (
-            <FlatList
-              numColumns={2}
-              columnWrapperStyle={{ gap: spacing.md, marginBottom: spacing.md }}
-              scrollEnabled={false}
-              data={courses}
-              keyExtractor={(item) => `mycourse-${item._id || Math.random()}`}
-              renderItem={({ item }) => (
-                <CourseCard
-                  course={item}
-                  onPress={() => navigation.navigate('CourseDetail', {
-                    id: item._id,
-                    title: item.title,
-                    thumbnailUrl: item.thumbnailUrl,
-                    description: item.description,
-                    sourcePlaylistId: item.sourcePlaylistId,
-                    price: item.price,
-                    isPaid: item.isPaid,
-                  })}
-                />
-              )}
-            />
-          )}
-        </View>
-      </ScrollView>
+      <TopBar variant="learning" title="My Learning" onBack={handleBack} />
+      <ErrorBanner message={error} />
+      <FlatList
+        data={courses}
+        keyExtractor={(item) => `mycourse-${item._id || Math.random()}`}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListHeaderComponent={<View style={{ height: spacing.lg }} />}
+        renderItem={renderCourseItem}
+        ListEmptyComponent={
+          totalCount === 0 ? (
+            <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.xl }}>
+              <EmptyState
+                title="No courses yet"
+                subtitle="Purchase courses to start learning"
+                primaryText="Browse Courses"
+                onPrimary={() => navigation.navigate('Courses')}
+              />
+            </View>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: spacing.xl }}
+      />
     </Screen>
   );
 }
-

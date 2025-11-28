@@ -106,7 +106,7 @@ export default function EditProfileScreen({ navigation, route }) {
   if (loading) {
     return (
       <Screen>
-        <TopBar onSearch={() => {}} onProfile={() => {}} />
+        <TopBar variant="inner" title="Edit Profile" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={colors.success} />
         </View>
@@ -116,7 +116,7 @@ export default function EditProfileScreen({ navigation, route }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onProfile={() => {}} />
+      <TopBar variant="inner" title="Edit Profile" onBack={() => navigation.goBack()} />
       <ScrollView>
         <View style={{ paddingTop: spacing.lg, paddingBottom: spacing.xl }}>
           <Card style={{ padding: spacing.lg, marginBottom: spacing.lg }}>

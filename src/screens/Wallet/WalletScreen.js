@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, Alert, Modal } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Screen from '../../components/layout/Screen';
 import TopBar from '../../components/layout/TopBar';
 import AppText from '../../components/atoms/AppText';
@@ -18,7 +19,7 @@ export default function WalletScreen({ navigation }) {
   const [selectedTx, setSelectedTx] = useState(null);
 
   const { colors, spacing, radii, shadows, typography } = useTheme();
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const [balanceRes, transactionsRes] = await Promise.all([
@@ -34,11 +35,18 @@ export default function WalletScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh wallet details whenever the screen regains focus (e.g., after a UPI top-up).
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -75,7 +83,7 @@ export default function WalletScreen({ navigation }) {
 
   return (
     <Screen>
-      <TopBar onSearch={() => {}} onCart={() => navigation.navigate('Cart')} onProfile={() => navigation.navigate('Profile')} />
+      <TopBar variant="inner" title="Wallet" onBack={() => navigation.goBack()} />
       <ErrorBanner message={error} />
       
       <ScrollView
@@ -110,10 +118,10 @@ export default function WalletScreen({ navigation }) {
           {/* Quick Actions - Enhanced */}
           <View className="mb-5">
             <AppText variant="base" weight="bold">Quick Actions</AppText>
-            <View className="flex-row gap-3">
+            <View style={{ flexDirection: 'row' }}>
               <Pressable
                 onPress={() => navigation.navigate('WalletTopUp')}
-                style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.lg, alignItems: 'center', ...shadows.md }}
+                style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.lg, alignItems: 'center', marginRight: spacing.md, ...shadows.md }}
               >
                 <View style={{ width: 56, height: 56, backgroundColor: colors.success + '20', borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm }}>
                   <MaterialCommunityIcons name="plus-circle" size={28} color={colors.success} />
@@ -134,22 +142,22 @@ export default function WalletScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Transaction History - Enhanced */}
-          <View style={{ backgroundColor: colors.surface, borderRadius: radii.lg, overflow: 'hidden', ...shadows.md }}>
-            <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, borderBottomColor: colors.border, borderBottomWidth: 1 }}>
+          {/* Transaction History */}
+          <View style={{ paddingHorizontal: spacing.lg }}>
+            <View style={{ marginBottom: spacing.md }}>
               <AppText variant="base" weight="bold">Transaction History</AppText>
               <AppText variant="xs" color="textSecondary" style={{ marginTop: spacing.xs }}>
                 {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
               </AppText>
             </View>
-            
+
             {loading ? (
               <View style={{ padding: spacing.xxl, alignItems: 'center' }}>
                 <MaterialCommunityIcons name="clock-outline" size={32} color={colors.textSecondary} />
                 <AppText variant="sm" color="textSecondary" style={{ marginTop: spacing.lg }}>Loading transactions...</AppText>
               </View>
             ) : transactions.length === 0 ? (
-              <View style={{ padding: spacing.xxl, alignItems: 'center' }}>
+              <View style={{ padding: spacing.xl, alignItems: 'center' }}>
                 <View style={{ width: 80, height: 80, backgroundColor: colors.border, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg }}>
                   <MaterialCommunityIcons name="wallet-outline" size={40} color={colors.textSecondary} />
                 </View>
@@ -161,46 +169,23 @@ export default function WalletScreen({ navigation }) {
               </View>
             ) : (
               <View>
-                {transactions.map((tx, index) => (
+                {transactions.map((tx) => (
                   <Pressable
                     key={tx._id}
                     onPress={() => setSelectedTx(tx)}
-                    style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomColor: index < transactions.length - 1 ? colors.border : 'transparent', borderBottomWidth: index < transactions.length - 1 ? 1 : 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: tx.status === 'pending' ? colors.warning + '15' : 'transparent' }}
+                    style={{ backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.md, marginBottom: spacing.md, ...shadows.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <View className="flex-1 flex-row items-center">
-                      <View
-                        style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: spacing.lg, backgroundColor: getStatusColor(tx.status) + '15' }}
-                      >
-                        <MaterialCommunityIcons
-                          name={tx.type === 'credit' ? 'arrow-down-bold' : 'arrow-up-bold'}
-                          size={22}
-                          color={getStatusColor(tx.status)}
-                        />
+                      <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md, backgroundColor: getStatusColor(tx.status) + '15' }}>
+                        <MaterialCommunityIcons name={tx.type === 'credit' ? 'arrow-down-bold' : 'arrow-up-bold'} size={20} color={getStatusColor(tx.status)} />
                       </View>
                       <View className="flex-1">
-                        <AppText variant="sm" weight="bold">
-                          {tx.type === 'credit' ? 'Money Added' : 'Course Purchase'}
-                        </AppText>
+                        <AppText variant="sm" weight="bold">{tx.type === 'credit' ? 'Money Added' : 'Course Purchase'}</AppText>
                         <AppText variant="xs" color="textSecondary" style={{ marginTop: 2 }}>
-                          {new Date(tx.createdAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </AppText>
-                        {tx.status === 'pending' && tx.utrNumber && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs }}>
-                            <AppText variant="xs" color="textSecondary">UTR: <Text style={{ fontFamily: 'monospace', color: colors.textSecondary }}>{tx.utrNumber}</Text></AppText>
-                          </View>
-                        )}
                         <View className="flex-row items-center mt-2">
-                          <MaterialCommunityIcons
-                            name={getStatusIcon(tx.status)}
-                            size={14}
-                            color={getStatusColor(tx.status)}
-                          />
+                          <MaterialCommunityIcons name={getStatusIcon(tx.status)} size={14} color={getStatusColor(tx.status)} />
                           <AppText variant="xs" weight="semibold" style={{ marginLeft: 6, textTransform: 'capitalize', color: getStatusColor(tx.status) }}>{tx.status}</AppText>
                         </View>
                       </View>

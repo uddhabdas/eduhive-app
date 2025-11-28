@@ -3,7 +3,7 @@
     "name": "EduHive",
     "slug": "eduhive",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/logo.jpg",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
